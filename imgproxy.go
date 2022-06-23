@@ -34,6 +34,8 @@ func (h *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	impersonate := r.URL.Query().Has("impersonate")
+
 	path := strings.Split(r.URL.Path[1:], ".")[0]
 	urlBytes, err := base64.RawURLEncoding.DecodeString(path)
 	if err != nil {
@@ -70,6 +72,13 @@ func (h *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 		pr.Header.Set(key, value[0])
 	}
+	if impersonate {
+		pr.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.124 Safari/537.36 Edg/102.0.1245.44")
+		pr.Header.Set("sec-ch-ua", "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"102\", \"Microsoft Edge\";v=\"102\"")
+		pr.Header.Set("sec-ch-ua-mobile", "?0")
+		pr.Header.Set("sec-ch-ua-platform", "\"Windows\"")
+		pr.Header.Del("Referer")
+	}
 
 	resp, err := http.DefaultClient.Do(pr)
 	if err != nil {
@@ -105,11 +114,12 @@ func (h *httpServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		length = wrote
 	}
 	log.PInfo("Proxied request", map[string]interface{}{
-		"remote_addr": r.RemoteAddr,
-		"method":      r.Method,
-		"url":         uri.String(),
-		"length_b":    length,
-		"length":      logtic.FormatBytesB(uint64(length)),
+		"remote_addr":  r.RemoteAddr,
+		"method":       r.Method,
+		"url":          uri.String(),
+		"length_b":     length,
+		"length":       logtic.FormatBytesB(uint64(length)),
+		"impersonated": impersonate,
 	})
 }
 
